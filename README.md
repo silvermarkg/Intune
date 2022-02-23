@@ -1,4 +1,4 @@
-# LabTools
+# Intune scripts
 
 General Intune scripts.
 
