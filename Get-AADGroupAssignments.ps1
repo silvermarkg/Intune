@@ -54,6 +54,15 @@ Write-host $Config.displayName -ForegroundColor Yellow
  
 }
  
+# Settings Catalog Configuration
+$AllSettingsCatalogConfig = Invoke-MSGraphRequest -HttpMethod GET -Url "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies" -Get-IntuneDeviceConfigurationPolicy -Select id, displayName, lastModifiedDateTime, assignments -Expand assignments | Where-Object { $_.assignments -match $Group.id }
+Write-host "Number of Device Configurations found: $($AllDeviceConfig.DisplayName.Count)" -ForegroundColor cyan
+Foreach ($Config in $AllDeviceConfig) {
+ 
+    Write-host $Config.displayName -ForegroundColor Yellow
+ 
+}
+
 # Device Configuration Powershell Scripts 
 $Resource = "deviceManagement/deviceManagementScripts"
 $graphApiVersion = "Beta"
