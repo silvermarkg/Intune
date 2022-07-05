@@ -10,15 +10,15 @@
   .NOTES
   Author: Mark Goodman
   Twitter: @silvermakrg
-  Version 1.00
-  Date: 01-Jul-2022
+  Version 1.0.0
+  Date: 05-Jul-2022
 
   Release Notes
   -------------
 
   Update History
   --------------
-  1.00 | 01-Jul-2022 | Initial script
+  1.0.0 | 05-Jul-2022 | Initial script
 
   License
   -------
@@ -65,6 +65,6 @@ if ($Model -in "Virtual Machine", "VMware Virtual Platform", "VMware7,1", "Virtu
   # Virtual machine detected
   # Set virtual machine as laptop
   New-Item -Path $VMLaptopRegKey -Force | Out-Null
-  Set-ItemProperty -Path $VMLaptopRegKey -Name IsLaptop -Value 1 -PropertyType Dword -Force
+  Set-ItemProperty -Path $VMLaptopRegKey -Name IsLaptop -Value 1 -Type Dword -Force
 }
 #endregion Main code
