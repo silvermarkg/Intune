@@ -1,7 +1,7 @@
 
 <#PSScriptInfo
 .DESCRIPTION
- Description
+ Get Intune managed devices associated with a user or group of users.
 
 .VERSION 1.0.0
 .GUID 
@@ -17,19 +17,25 @@
 .EXTERNALSCRIPTDEPENDENCIES 
 
 .RELEASENOTES
-Version 1.0.0 | 05-Jul-2022 | Initial script
+Version 1.0.0 | 14-Sep-2022 | Initial script
 
 #>
 
 <#
   .SYNOPSIS
-  <Short description>
+  Get Intune managed devices associated with a user or group of users.
 
   .DESCRIPTION
-  <Long description>
+  Uses the Microsoft.Graph.Intune PowerShell module to get managed devices associated with a user or group of users.
+  You can specify a single user by userPrincipalName or an AzureAD group by name or objectId.
+  You can specify the OS of the devices to return, for example only return Windows devices or iOS and Andriod devices.
+  You can specify device name prefixes to only return devices that match the prefixes. For example only return devices starting 
+  with "L" or return devices starting with "L" and "D".
+
+  Script returns device objects or you can output to CSV using the Path parameter.
 
   .PARAMETER Identity
-  Specifies the userPrinciaplName to find devices for.
+  Specifies the userPrincipalName to find devices for.
 
   .PARAMETER GroupName
   Specifies an Azure AD group name to find devices for all members.
@@ -50,11 +56,32 @@ Version 1.0.0 | 05-Jul-2022 | Initial script
   PowerShell objects.
 	
   .EXAMPLE
-  Get-UserDevices.ps1
+  Get-UserDevices.ps1 -Identity sjones@mydomain.com
 
   Description
   -----------
-  <example description>
+  Returns managed devices associated with the user sjones@mydomain.com
+
+  .EXAMPLE
+  Get-UserDevices.ps1 -GroupName Sales -OperatingSystem Windows
+
+  Description
+  -----------
+  Returns managed Windows devices associated with all the members of the Azure AD group 'Sales'
+  
+  .EXAMPLE
+  Get-UserDevices.ps1 -GroupId '73069750-4d09-4d85-b106-3318c72732b2' -OperatingSystem iOS,Android
+
+  Description
+  -----------
+  Returns managed iOS and Android devices associated with all the members of the group with objectId '73069750-4d09-4d85-b106-3318c72732b2'
+
+  .EXAMPLE
+  Get-UserDevices.ps1 -GroupName Sales -DeviceNamePrefix 'L-','D-'
+
+  Description
+  -----------
+  Returns managed devices associated with all the members of the 'Sales' group and only returns devices starting with 'L-' or 'D-'
 #> 
 
 #region - Parameters
