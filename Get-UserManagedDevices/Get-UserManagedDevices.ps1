@@ -28,7 +28,7 @@ Version 1.0.0 | 14-Sep-2022 | Initial script
   .DESCRIPTION
   Uses the Microsoft.Graph.Intune PowerShell module to get managed devices associated with a user or group of users.
   You can specify a single user by userPrincipalName or an AzureAD group by name or objectId.
-  You can specify the OS of the devices to return, for example only return Windows devices or iOS and Andriod devices.
+  You can specify the OS of the devices to return, for example only return Windows devices or iOS and Android devices.
   You can specify device name prefixes to only return devices that match the prefixes. For example only return devices starting 
   with "L" or return devices starting with "L" and "D".
 
@@ -56,28 +56,35 @@ Version 1.0.0 | 14-Sep-2022 | Initial script
   PowerShell objects.
 	
   .EXAMPLE
-  Get-UserDevices.ps1 -Identity sjones@mydomain.com
+  Get-UserManagedDevices.ps1.ps1 -Identity sjones@mydomain.com
 
   Description
   -----------
   Returns managed devices associated with the user sjones@mydomain.com
 
   .EXAMPLE
-  Get-UserDevices.ps1 -GroupName Sales -OperatingSystem Windows
+  Get-UserManagedDevices.ps1.ps1 -GroupName Sales -Path C:\SalesDevices.csv
+
+  Description
+  -----------
+  Returns managed devices associated with all members of the Azure AD group 'Sales' and exports the data to a CSV file
+
+  .EXAMPLE
+  Get-UserManagedDevices.ps1.ps1 -GroupName Sales -OperatingSystem Windows
 
   Description
   -----------
   Returns managed Windows devices associated with all the members of the Azure AD group 'Sales'
   
   .EXAMPLE
-  Get-UserDevices.ps1 -GroupId '73069750-4d09-4d85-b106-3318c72732b2' -OperatingSystem iOS,Android
+  Get-UserManagedDevices.ps1.ps1 -GroupId '73069750-4d09-4d85-b106-3318c72732b2' -OperatingSystem iOS,Android
 
   Description
   -----------
   Returns managed iOS and Android devices associated with all the members of the group with objectId '73069750-4d09-4d85-b106-3318c72732b2'
 
   .EXAMPLE
-  Get-UserDevices.ps1 -GroupName Sales -DeviceNamePrefix 'L-','D-'
+  Get-UserManagedDevices.ps1.ps1 -GroupName Sales -DeviceNamePrefix 'L-','D-'
 
   Description
   -----------
