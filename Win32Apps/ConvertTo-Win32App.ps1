@@ -4,13 +4,13 @@
  Converts source content to a Win32App using the Microsoft Win32 Content Prep Tool and allows you to specify the name of
  the output .intunewin file. 
 
-.VERSION 1.0.0
+.VERSION 1.0.2
 .GUID 
 .AUTHOR Mark Goodman (@silvermarkg)
 .COMPANYNAME 
 .COPYRIGHT 2022 Mark Goodman
 .TAGS 
-.LICENSEURI **Need to point this to MIT license hosted on GitHub - see https://github.com/mit-license/mit-license.github.io**
+.LICENSEURI https://gist.githubusercontent.com/silvermarkg/f58688cacdd51f9228441b8d124a6a03/raw/6fa8cd4c4074b7415c3b1e09243e1ac64145b80e/mit-license.txt
 .PROJECTURI 
 .ICONURI 
 .EXTERNALMODULEDEPENDENCIES 
@@ -18,6 +18,8 @@
 .EXTERNALSCRIPTDEPENDENCIES 
 
 .RELEASENOTES
+Version 1.0.2 | 08-Nov-2022 | Added validation on parameter paths
+Version 1.0.1 | 21-Jul-2022 | Added confirmation to overwrite exising output file
 Version 1.0.0 | 06-Jul-2022 | Initial script
 
 #>
@@ -70,6 +72,7 @@ Version 1.0.0 | 06-Jul-2022 | Initial script
 param(
   [Parameter(Mandatory = $true, Position = 0)]
   [ValidateNotNullOrEmpty()]
+  [ValidateScript({ Test-Path -Path $_ -PathType Container })]
   [String]$ContentPath,
 
   [Parameter(Mandatory = $true, Position = 1)]
@@ -78,6 +81,7 @@ param(
 
   [Parameter(Mandatory = $true, Position = 2)]
   [ValidateNotNullOrEmpty()]
+  [ValidateScript({ Test-Path -Path $_ -PathType Container })]
   [String]$OutputPath,
 
   [Parameter(Mandatory = $false, Position = 3)]
@@ -92,22 +96,61 @@ Set-StrictMode -Version Latest
 #endregion - Script Environment
 
 #region - Functions
+function Confirm-ReplaceFile {
+  #region - Parameters
+  [Cmdletbinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+  param(
+    [Parameter(Mandatory = $true, Position = 0)]
+    [ValidateNotNullOrEmpty()]
+    [String]$Path
+  )
+  #endregion - Parameters
+
+  #region - Script
+  if ($PSCmdlet.ShouldProcess($Path,"Replace file")) {
+    return $true
+  }
+  else {
+    return $false
+  }
+}
 #endregion - Functions
 
 #region - Variables
 $Win32ContentTool = "$($PSScriptRoot)\IntuneWinAppUtil.exe"
+$setupFileFullPath = Join-Path -Path $ContentPath -ChildPath $SetupFile
 
 #endregion - Variables
 #region - Main code
 # Check Win32 Content Prep tool is in same folder as script
 if (Test-Path -Path $Win32ContentTool -PathType Leaf) {
-  # Package app contents
-  & "$($Win32ContentTool)" -c "$($ContentPath)" -s "$($SetupFile)" -o "$($OutputPath)"
+  # Check setup file exists
+  if (Test-Path -Path $setupFileFullPath -PathType Leaf) {
+    # Package app contents
+    & "$($Win32ContentTool)" -c "$($ContentPath)" -s "$($SetupFile)" -o "$($OutputPath)"
 
-  # Rename output file
-  if ($null -ne $Name -and "" -ne $Name) {
-    $IntunewinFileName = (Get-Item -Path "$($ContentPath)\$($SetupFile)").BaseName + ".intunewin"
-    Rename-Item -Path "$($OutputPath)\$($IntunewinFileName)" -NewName "$($Name).intunewin"
+    # Check if output file already exists
+    $OutputFile = Join-Path -Path $OutputPath -ChildPath $SetupFile
+
+    # Rename output file
+    if ($null -ne $Name -and "" -ne $Name) {
+      # Confirm if file should be replaced if it exists
+      if (Test-Path -Path (Join-Path -Path $OutputPath -ChildPath "$($Name).intunewin") -PathType Leaf) {
+        $ReplaceFile = Confirm-ReplaceFile -Path "$($Name).intunewin"
+      }
+      else {
+        $ReplaceFile = $true
+      }
+      
+      # Rename file
+      if ($ReplaceFile) {
+        $IntunewinFileName = (Get-Item -Path "$($ContentPath)\$($SetupFile)").BaseName + ".intunewin"
+        Rename-Item -Path "$($OutputPath)\$($IntunewinFileName)" -NewName "$($Name).intunewin"
+      }
+    }
+  }
+  else {
+    Write-Warning -Message "Setup file does not exist!"
   }
 }
 else {
