@@ -1,0 +1,18 @@
+{
+    "en-US": {
+        "characters": "characters",
+        "numbers": "numbers",
+        "choosePin": "Choose a PIN that's {0}-20 {1} long.",
+        "PinIsNotEqualNotLongEnough": "PIN is not long enough",
+        "PinIsNotEqualOnlyNumbers": "Only numbers allowed",
+        "PinIsNotEqualSettingNow": "Setting valid PIN now...",
+        "PinIsNotEqual": "PIN is not equal",
+        "PinIsTooSimple": "PIN is too simple",
+        "BitLockerStartupPIN": "BitLocker startup PIN",
+        "RetypePIN": "Re-type PIN",
+        "NewPIN": "New PIN",
+        "buttonCancel": "&Cancel",
+        "buttonSetPin": "&Set PIN",
+        "labelSetBLStartupPin": "Set BitLocker startup PIN"
+    }
+}
