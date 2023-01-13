@@ -96,7 +96,7 @@ Version 1.0.0 | 14-Sep-2022 | Initial script
 param(
   [Parameter(ParameterSetName = "UPN", Mandatory = $true, Position = 0, HelpMessage = "User UPN")]
   [ValidateNotNullOrEmpty()]
-  [String]$Identity,
+  [String[]]$Identity,
 
   [Parameter(ParameterSetName = "GroupName", Mandatory = $true, Position = 0, HelpMessage = "User UPN")]
   [ValidateNotNullOrEmpty()]
@@ -114,6 +114,10 @@ param(
   [Parameter(Mandatory = $false)]
   [ValidateNotNullOrEmpty()]
   [String[]]$DeviceNamePrefix,
+
+  [Parameter(Mandatory = $false)]
+  [ValidateNotNullOrEmpty()]
+  [String]$LastSyncDate,
 
   [Parameter(Mandatory = $false)]
   [ValidateNotNullOrEmpty()]
@@ -156,14 +160,17 @@ Import-Module -Name Microsoft.Graph.Intune
 # Connect to MSGraph
 AuthenticateTo-MsGraph
 
-# Get 
-if ($Identity) {
-  # Get device for specific user
-  $Members = [PSCustomObject]@{
-    userPrincipalName = $Identity
+if ($PSCmdLet.ParameterSetName -eq "UPN") {
+  # Get devices for users
+  $Members = @()
+  foreach ($upn in $Identity) {
+    # Get devices for specific users
+    $Members += [PSCustomObject]@{
+      userPrincipalName = $upn
+    }
   }
 }
-elseif ($GroupName) {
+elseif ($PSCmdLet.ParameterSetName -eq "GroupName") {
   $Group = Get-Groups -Filter "displayName eq '$($GroupName)'"
   if ($Group) {
     $Members = Get-Groups_Members -groupId $Group.Id
@@ -177,7 +184,7 @@ else {
 # Define Operating System filter
 $osFilter = ""
 if ($PSBoundParameters.ContainsKey("OperatingSystem")) {
-  $osFilter += "("
+  $osFilter += " and ("
   for ($i=0; $i -lt $OperatingSystem.Length; $i++) {
     if ($i -eq 0) {
       $osFilter += "operatingSystem eq '$($OperatingSystem[$i])'"
@@ -186,12 +193,18 @@ if ($PSBoundParameters.ContainsKey("OperatingSystem")) {
       $osFilter += "or operatingSystem eq '$($OperatingSystem[$i])'"
     }
   }
-  $osFilter += ") and "
+  $osFilter += ")"
+}
+
+# Define last sync date filter
+$lastSyncFilter = ""
+if ($PSBoundParameters.ContainsKey("LastSyncDate")) {
+  $lastSyncFilter += " and (lastSyncDateTime ge $($LastSyncDate))"
 }
 
 # Get devices for all members
 foreach ($User in $Members) {
-  $devices += Get-DeviceManagement_ManagedDevices -Filter "$($osFilter) userPrincipalName eq '$($User.userPrincipalName)'" | Get-MsGraphAllPages
+  $devices += Get-DeviceManagement_ManagedDevices -Filter "userPrincipalName eq '$($User.userPrincipalName)' $($osFilter) $($lastSyncFilter)" | Get-MsGraphAllPages
 }
 
 # Filter on device name if required
@@ -223,5 +236,4 @@ if ($Path) {
 else {
   return $devices
 }
-
 #endregion - Process
