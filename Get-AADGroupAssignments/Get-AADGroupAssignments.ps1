@@ -2,9 +2,13 @@
 
 [CmdletBinding(SupportsShouldProcess=$true,ConfirmImpact="Low")]
 param (
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory=$true,ParameterSetName="Name")]
     [ValidateNotNullOrEmpty()]
-    [String]$Name
+    [String]$Name,
+
+    [Parameter(Mandatory=$true,ParameterSetName="ID")]
+    [ValidateNotNullOrEmpty()]
+    [String]$Id
 )
 
 # Connect and change schema 
@@ -12,14 +16,16 @@ Connect-MSGraph -ForceInteractive
 Update-MSGraphEnvironment -SchemaVersion beta
 Connect-MSGraph
  
-# Which AAD group do we want to check against
-$groupName = $Name
- 
 #$Groups = Get-AADGroup | Get-MSGraphAllPages
-$Group = Get-AADGroup -Filter "displayname eq '$GroupName'"
+if ($PSCmdlet.ParameterSetName -eq "Name") {
+  $Group = Get-AADGroup -Filter "displayname eq '$GroupName'"
+}
+else {
+  $Group = Get-AADGroup -groupId $Id
+}
 if ($null -eq $Group) {
     # Could not find group
-    Write-Warning -Message "Failed to find group '$($GroupName)'!"
+    Write-Warning -Message "Failed to find group!"
     exit
 }
  
@@ -48,6 +54,7 @@ Write-host $Config.displayName -ForegroundColor Yellow
  
  
 # Device Configuration
+### THIS IS CURRENTLY FAILING ###
 $AllDeviceConfig = Get-IntuneDeviceConfigurationPolicy -Select id, displayName, lastModifiedDateTime, assignments -Expand assignments | Where-Object {$_.assignments -match $Group.id}
 Write-host "Number of Device Configurations found: $($AllDeviceConfig.DisplayName.Count)" -ForegroundColor cyan
 Foreach ($Config in $AllDeviceConfig) {
