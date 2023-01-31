@@ -1,4 +1,4 @@
-function Convert-SidToAzureADObjectId {
+function Convert-AzureADSidToObjectId {
 <#
 .SYNOPSIS
 Convert a SID to its Azure AD Object ID
