@@ -1,4 +1,3 @@
-function Convert-AzureADSidToObjectId {
 <#
 .SYNOPSIS
 Convert a SID to its Azure AD Object ID
@@ -13,14 +12,14 @@ The script is provided "AS IS" with no warranties.
 The SID to convert
 #>
 
-    param([String] $Sid)
+param([String] $Sid)
 
-    $text = $sid.Replace('S-1-12-1-', '')
-    $array = [UInt32[]]$text.Split('-')
+$text = $sid.Replace('S-1-12-1-', '')
+$array = [UInt32[]]$text.Split('-')
 
-    $bytes = New-Object 'Byte[]' 16
-    [Buffer]::BlockCopy($array, 0, $bytes, 0, 16)
-    [Guid]$guid = $bytes
+$bytes = New-Object 'Byte[]' 16
+[Buffer]::BlockCopy($array, 0, $bytes, 0, 16)
+[Guid]$guid = $bytes
 
-    return $guid
-}
+return $guid
+
