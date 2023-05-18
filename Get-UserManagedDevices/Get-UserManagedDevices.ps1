@@ -142,7 +142,7 @@ function AuthenticateTo-MsGraph {
   }
   catch [System.Exception] {
     # Authenticate
-    Connect-MSGraph -ForceInteractive
+    Connect-MSGraph -ForceInteractive | Out-Null
   }
 }
 #endregion - Functions
@@ -155,7 +155,9 @@ $devices = @()
 #region - Process
 
 # Import module
-Import-Module -Name Microsoft.Graph.Intune
+if (-Not (Get-Module -Name Microsoft.Graph.Intune)) {
+  Import-Module -Name Microsoft.Graph.Intune
+}
 
 # Connect to MSGraph
 AuthenticateTo-MsGraph
@@ -173,7 +175,7 @@ if ($PSCmdLet.ParameterSetName -eq "UPN") {
 elseif ($PSCmdLet.ParameterSetName -eq "GroupName") {
   $Group = Get-Groups -Filter "displayName eq '$($GroupName)'"
   if ($Group) {
-    $Members = Get-Groups_Members -groupId $Group.Id
+    $Members = Get-Groups_Members -groupId $Group.Id | Get-MSGraphAllPages
   }
 }
 else {
@@ -203,6 +205,7 @@ if ($PSBoundParameters.ContainsKey("LastSyncDate")) {
 }
 
 # Get devices for all members
+Write-Verbose -Message "Members found: $($Members.Count)"
 foreach ($User in $Members) {
   $devices += Get-DeviceManagement_ManagedDevices -Filter "userPrincipalName eq '$($User.userPrincipalName)' $($osFilter) $($lastSyncFilter)" | Get-MsGraphAllPages
 }
