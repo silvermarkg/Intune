@@ -3,7 +3,7 @@
 .DESCRIPTION
  Get Intune managed devices associated with a user or group of users.
 
-.VERSION 1.0.0
+.VERSION 1.1.0
 .GUID 
 .AUTHOR Mark Goodman (@silvermarkg)
 .COMPANYNAME 
@@ -18,6 +18,7 @@
 
 .RELEASENOTES
 Version 1.0.0 | 14-Sep-2022 | Initial script
+Version 1.1.0 | 23-Oct-2023 | Updated to use Microsoft Graph modules
 
 #>
 
@@ -26,7 +27,7 @@ Version 1.0.0 | 14-Sep-2022 | Initial script
   Get Intune managed devices associated with a user or group of users.
 
   .DESCRIPTION
-  Uses the Microsoft.Graph.Intune PowerShell module to get managed devices associated with a user or group of users.
+  Uses the Microsoft Graph PowerShell modules to get managed devices associated with a user or group of users.
   You can specify a single user by userPrincipalName or an AzureAD group by name or objectId.
   You can specify the OS of the devices to return, for example only return Windows devices or iOS and Android devices.
   You can specify device name prefixes to only return devices that match the prefixes. For example only return devices starting 
@@ -54,6 +55,9 @@ Version 1.0.0 | 14-Sep-2022 | Initial script
   .PARAMETER Path
   Specifies the path of the csv file to export returned data to. If not specified, data is returned as 
   PowerShell objects.
+
+  .PARAMETER TenantId
+  Optionally specify the tenant Id to connect to.
 	
   .EXAMPLE
   Get-UserManagedDevices.ps1.ps1 -Identity sjones@mydomain.com
@@ -121,13 +125,17 @@ param(
 
   [Parameter(Mandatory = $false)]
   [ValidateNotNullOrEmpty()]
-  [String]$Path
+  [String]$Path,
+
+  [Parameter(Mandatory = $false)]
+  [ValidateNotNullOrEmpty()]
+  [String]$TenantId
 )
 #endregion - Parameters
 
 #region - Script Environment
 #Requires -Version 5
-# #Requires -RunAsAdministrator
+#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Groups, Microsoft.Graph.DeviceManagement
 Set-StrictMode -Version Latest
 #endregion - Script Environment
 
@@ -138,12 +146,69 @@ function AuthenticateTo-MsGraph {
   param()
 
   try {
-    Get-Organization -ErrorAction Stop | Out-Null
+    $GraphContext = Get-MgContext -ErrorAction Stop
+    if ($Script:TenantId -and $GraphContext.TenantId -ne $Script:TenantId) {
+      # Connected to different tenant. Disconnect and re-connect
+      Disconnect-MgGraph | Out-Null
+      Connect-MgGraph -TenantId $Script:TenantId | Out-Null
+    }
+    else {
+      throw "Not connected!"
+    }
   }
   catch [System.Exception] {
     # Authenticate
-    Connect-MSGraph -ForceInteractive | Out-Null
+    Connect-MgGraph | Out-Null
   }
+}
+
+function Get-AllGroupMembers {
+  <#
+		.SYNOPSIS
+		Gets all members users or devices of an Entra group including memebers of nested groups.
+
+		.DESCRIPTION
+		
+		.PARAMETER GroupId
+		The Entra group Id of the group to query.
+  #>
+
+  [CmdletBinding()]
+  param (
+    [Parameter(Mandatory = $true, Position = 0)]
+    [ValidateNotNullOrEmpty()]
+    [String]$GroupId, 
+
+    [Parameter(Mandatory = $true, Position = 1)]
+    [ValidateNotNullOrEmpty()]
+    [ValidateSet("User", "Device")]
+    [String]$Type
+  )
+
+  # Declare variables
+  $Members = @()
+
+  # Get members of group
+  switch ($Type) {
+    "User" { $Members += Get-MgGroupMemberAsUser -GroupId $GroupId -All }
+    "Device" { $Members += Get-MgGroupMemberAsDevice -GroupId $GroupId -All }
+  }
+
+  # Get nested group members
+  $NestedGroups = Get-MgGroupMemberAsGroup -GroupId $GroupId -All
+
+  # Enumerate direct members
+  foreach ($Group in $NestedGroups) {
+    $Members += Get-AllGroupMembers -GroupId $Group.Id -Type $Type
+    ## Might need to enumerate the nested group members to remove/avoid duplicates
+    ## or see if there is another way to remove them afterwards
+  }
+
+  # Filter out duplicates
+  $Members = $Members | Select-Object -Property * -Unique
+
+  # Return members
+  return $Members
 }
 #endregion - Functions
 
@@ -153,11 +218,6 @@ $devices = @()
 #endregion - Variables
 
 #region - Process
-
-# Import module
-if (-Not (Get-Module -Name Microsoft.Graph.Intune)) {
-  Import-Module -Name Microsoft.Graph.Intune
-}
 
 # Connect to MSGraph
 AuthenticateTo-MsGraph
@@ -173,14 +233,14 @@ if ($PSCmdLet.ParameterSetName -eq "UPN") {
   }
 }
 elseif ($PSCmdLet.ParameterSetName -eq "GroupName") {
-  $Group = Get-Groups -Filter "displayName eq '$($GroupName)'"
+  $Group = Get-MgGroup -Filter "displayName eq '$($GroupName)'"
   if ($Group) {
-    $Members = Get-Groups_Members -groupId $Group.Id | Get-MSGraphAllPages
+    $Members = Get-AllGroupMembers -GroupId $Group.Id -Type User
   }
 }
 else {
   # Get group members by group id
-  $Members = Get-Groups_Members -groupId $GroupId
+  $Members = Get-AllGroupMembers -GroupId $GroupId -Type User
 }
 
 # Define Operating System filter
@@ -207,7 +267,7 @@ if ($PSBoundParameters.ContainsKey("LastSyncDate")) {
 # Get devices for all members
 Write-Verbose -Message "Members found: $($Members.Count)"
 foreach ($User in $Members) {
-  $devices += Get-DeviceManagement_ManagedDevices -Filter "userPrincipalName eq '$($User.userPrincipalName)' $($osFilter) $($lastSyncFilter)" | Get-MsGraphAllPages
+  $devices += Get-MgDeviceManagementManagedDevice -Filter "userPrincipalName eq '$($User.userPrincipalName)' $($osFilter) $($lastSyncFilter)" -All
 }
 
 # Filter on device name if required
