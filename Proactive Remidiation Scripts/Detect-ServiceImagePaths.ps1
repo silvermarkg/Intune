@@ -54,14 +54,8 @@ if ($null -eq $Services) {
   Exit 0
 }
 else {
-  # Unqouted services found, output affected services and mark for remeidation
-  foreach ($Item in $Services) {
-    # Output service data
-    [PSCustomObject]@{
-      Service      = $Item.PSChildName
-      ImagePath    = $Item.ImagePath
-    }
-  }
+  # Unqouted services found
+  Write-Host -Object "Services needing remediation: $(($Services | Measure-Object).Count)"
 
   # Causes remediation script to run
   Exit 1
