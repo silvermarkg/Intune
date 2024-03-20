@@ -4,7 +4,7 @@
  Converts source content to a Win32App using the Microsoft Win32 Content Prep Tool and allows you to specify the name of
  the output .intunewin file. 
 
-.VERSION 1.0.2
+.VERSION 1.0.3
 .GUID 
 .AUTHOR Mark Goodman (@silvermarkg)
 .COMPANYNAME 
@@ -18,6 +18,7 @@
 .EXTERNALSCRIPTDEPENDENCIES 
 
 .RELEASENOTES
+Version 1.0.3 | 18-Mar-2024 | Fixed overwriting output file on rename
 Version 1.0.2 | 08-Nov-2022 | Added validation on parameter paths
 Version 1.0.1 | 21-Jul-2022 | Added confirmation to overwrite exising output file
 Version 1.0.0 | 06-Jul-2022 | Initial script
@@ -96,7 +97,7 @@ Set-StrictMode -Version Latest
 #endregion - Script Environment
 
 #region - Functions
-function Confirm-ReplaceFile {
+function Confirm-OverwriteFile {
   #region - Parameters
   [Cmdletbinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
   param(
@@ -107,7 +108,7 @@ function Confirm-ReplaceFile {
   #endregion - Parameters
 
   #region - Script
-  if ($PSCmdlet.ShouldProcess($Path,"Replace file")) {
+  if ($PSCmdlet.ShouldProcess($Path,"Overwrite file")) {
     return $true
   }
   else {
@@ -129,24 +130,30 @@ if (Test-Path -Path $Win32ContentTool -PathType Leaf) {
     # Package app contents
     & "$($Win32ContentTool)" -c "$($ContentPath)" -s "$($SetupFile)" -o "$($OutputPath)"
 
-    # Check if output file already exists
-    $OutputFile = Join-Path -Path $OutputPath -ChildPath $SetupFile
+    # Check if output file exists
+    $OutputFileName = Join-Path -Path $OutputPath -ChildPath ($SetupFile -replace '(\..*)$', ".intunewin")
 
-    # Rename output file
-    if ($null -ne $Name -and "" -ne $Name) {
+    # Rename output file if required
+    if ($null -ne $Name -and "" -ne $Name -and (Test-Path -Path $OutputFileName -PathType Leaf)) {
+      # Set new file name
+      $NewFileName = Join-Path -Path $OutputPath -ChildPath "$($Name).intunewin"
+
       # Confirm if file should be replaced if it exists
-      if (Test-Path -Path (Join-Path -Path $OutputPath -ChildPath "$($Name).intunewin") -PathType Leaf) {
-        $ReplaceFile = Confirm-ReplaceFile -Path "$($Name).intunewin"
-      }
-      else {
-        $ReplaceFile = $true
+      if (Test-Path -Path $NewFileName -PathType Leaf) {
+        $OverwriteFile = Confirm-OverwriteFile -Path $NewFileName
+        if ($OverwriteFile) {
+          # Delete existing file
+          Remove-Item -Path $NewFileName -Force
+        }
+        else {
+          # Set new name for file (add date time to avoid conflict)
+          $DateString = Get-Date -Format "yyyyMMdd_HHmmss"
+          $NewFileName = $NewFileName.Replace(".intunewin", "_$($DateString).intunewin")
+        }
       }
       
       # Rename file
-      if ($ReplaceFile) {
-        $IntunewinFileName = (Get-Item -Path "$($ContentPath)\$($SetupFile)").BaseName + ".intunewin"
-        Rename-Item -Path "$($OutputPath)\$($IntunewinFileName)" -NewName "$($Name).intunewin"
-      }
+      Rename-Item -Path $OutputFileName -NewName $NewFileName
     }
   }
   else {
