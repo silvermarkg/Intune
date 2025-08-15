@@ -1,10 +1,12 @@
+# Using https://github.com/Romanitho/Winget-Install/blob/main/winget-detect.ps1 as this is better than this current script
+
 # Define script variables
 $PackageId = "<Package.Id>" # Update <Package.Id> with id for app
 $CurrentVersion = $null
 $AvailableVersion = $null
 
 # Search for installed WinGet package
-$WinGetResponse = winget list --id $PackageId --count 1 --source winget
+$WinGetResponse = winget list --id $PackageId --count 1 --source winget --accept-source-agreements
 if ($null -ne $WinGetResponse) {
   # Package found, determine versions
   $WinGetLine = $WinGetResponse | Select-String $PackageId -SimpleMatch
