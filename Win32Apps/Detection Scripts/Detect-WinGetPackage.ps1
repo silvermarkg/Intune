@@ -1,5 +1,5 @@
 # Define script variables
-$PackageId = "Microsoft.EdgeWebView2Runtime"
+$PackageId = "<Package.Id>" # Update <Package.Id> with id for app
 $CurrentVersion = $null
 $AvailableVersion = $null
 
